@@ -1,0 +1,16 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bookwhamistukas
+spec:
+  selector:
+    matchLabels:
+      stukas: bookwhoami
+  template:
+    metadata:
+      labels:
+        stukas: bookwhoami
+    spec:
+      containers:
+        - name: bookwebwhoami
+          image: kiamol/ch02-whoami
