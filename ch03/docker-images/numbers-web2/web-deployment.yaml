@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+# name by which the deployment will be identified and
+# referred to by other resources
+  name: numbers-web
+spec:
+  selector:
+  # matchLabels is used to match the labels of the pods
+    matchLabels:
+      app: gonumbers-web
+  template:
+    metadata:
+    # labels are used to identify the pods
+      labels:
+        app: gonumbers-web
+    spec:
+      containers:
+        - name: web
+          image: gonumbersweb2
+          # imagePullPolicy is set to Never to indicate that
+          # the image will not be pulled from a registry (local one)
+          imagePullPolicy: Never
+          resources:
+            limits:
+              cpu: "1"
+              memory: "512Mi"

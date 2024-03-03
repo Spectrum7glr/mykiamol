@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+# name by which the deployment will be identified and
+# referred to by other resources
+  name: numbers-web
+spec:
+  selector:
+  # matchLabels is used to match the labels of the pods
+    matchLabels:
+      app: gonumbers-web
+  template:
+    metadata:
+    # labels are used to identify the pods
+      labels:
+        app: gonumbers-web
+    spec:
+      containers:
+        - name: web
+          image: gonumbersweb2
+          # imagePullPolicy is set to Never to indicate that
+          # the image will not be pulled from a registry (local one)
+          imagePullPolicy: Never
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+# name by which the deployment will be identified and
+# referred to by other resources
+  name: numbers-api
+spec:
+  selector:
+  # matchLabels is used to match the labels of the pods
+    matchLabels:
+      app: gonumbers-api
+  template:
+    metadata:
+    # labels are used to identify the pods
+      labels:
+        app: gonumbers-api
+    spec:
+      containers:
+        - name: api
+          image: gonumbersapi
+          # imagePullPolicy is set to Never to indicate that
+          # the image will not be pulled from a registry (local one)
+          imagePullPolicy: Never
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: numbers-api
+spec:
+  ports:
+    - port: 80
+  selector:
+    app: gonumbers-api
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: numbers-web-nodeport
+spec:
+  ports:
+    - port: 8080
+      targetPort: 80
+      nodePort: 30180
+  selector:
+    app: gonumbers-web
+  type: NodePort

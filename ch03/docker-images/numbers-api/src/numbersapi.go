@@ -33,8 +33,8 @@ func RunCLI() {
 	na := http.HandlerFunc(numbersapi)
 	mux.Handle("GET /rnd", na)
 	// mux.HandleFunc("/", numbersapi)
-	fmt.Println("Starting server on :80")
-	err := http.ListenAndServe(":80", mux)
+	fmt.Println("Starting server on :8091")
+	err := http.ListenAndServe(":8091", mux)
 	if err != nil {
 		log.Fatal(err)
 	}
