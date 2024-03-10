@@ -11,20 +11,18 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/viper"
 )
 
-var EnvConfigs *envConfigs
-
-// We will call this in main.go to load the env variables
-func InitEnvConfigs() {
-	EnvConfigs = loadEnvVariables()
-}
-
-func loadEnvVariables() (config *envConfigs) {
-	viper.SetDefault("api_endpoint", "http://numbers-api/rnd")
+func loadEnvVariables() (config *EnvConfigs) {
+	// Set default values
+	// viper.SetDefault("api_endpoint", "http://numbers-api/rnd")
+	viper.SetDefault("api.endpoint", "http://localhost/rnd")
 	viper.SetDefault("port", "80")
 	viper.SetDefault("timeout", 2)
+
+	// Bind environment variables
 	viper.BindEnv("path")
 	viper.BindEnv("stocazzo")
 
@@ -34,29 +32,49 @@ func loadEnvVariables() (config *envConfigs) {
 	viper.AddConfigPath("./config")
 
 	// Tell viper the name of your file
-	viper.SetConfigName("ch04")
+	viper.SetConfigName("default")
 
 	// Tell viper the type of your file
-	viper.SetConfigType("env")
+	viper.SetConfigType("json")
+	// viper.SetConfigType("env")
 
 	// Viper reads all the variables from env file and log error if any found
 	if err := viper.ReadInConfig(); err != nil {
 		log.Print("Error reading env file", err)
 	}
+
+	// Viper finds env variables that match any of the existing keys
+	// and replaces the values of those keys with the values of the corresponding env variables
+	// (keys are teh ones coming from config file or that have a default value set)
 	viper.AutomaticEnv()
+
 	// Viper unmarshals the loaded env varialbes into the struct
 	if err := viper.Unmarshal(&config); err != nil {
 		log.Fatal(err)
 	}
+
+	viper.WatchConfig()
+	viper.OnConfigChange(func(e fsnotify.Event) {
+		log.Println("Config file changed:", e.Name)
+		viper.ReadInConfig()
+		err := viper.Unmarshal(&config)
+		if err != nil {
+			log.Fatal(err)
+		}
+	})
 	return
 }
 
 // struct to map env values
-type envConfigs struct {
-	ApiEndpoint string `mapstructure:"API_ENDPOINT"`
-	Port        string `mapstructure:"PORT"`
-	Timeout     int    `mapstructure:"TIMEOUT"`
-	Path        string `mapstructure:"PATH"`
+type EnvConfigs struct {
+	Api struct {
+		Endpoint string `mapstructure:"ENDPOINT"`
+	} `mapstructure:"API"`
+	// ApiEndpoint string `mapstructure:"API_ENDPOINT"`
+	Port    string `mapstructure:"PORT"`
+	Timeout int    `mapstructure:"TIMEOUT"`
+	Path    string `mapstructure:"PATH"`
+	Logging string `mapstructure:"LOGGING"`
 }
 
 var validtokens = make(map[string]bool)
@@ -75,102 +93,104 @@ func generateToken() string {
 	return hex.EncodeToString(b)
 }
 
-func initialPage(w http.ResponseWriter, r *http.Request) {
-	templ, err := template.New("index").Parse(indexPage)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	token := generateToken()
-	validtokens[token] = true
-	err = templ.Execute(w, token)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+func InitialPage(c *EnvConfigs) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		templ, err := template.New("index").Parse(indexPage)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		token := generateToken()
+		validtokens[token] = true
+		err = templ.Execute(w, token)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	}
 }
 
-func responsePage(w http.ResponseWriter, r *http.Request) {
-	// if r.Method != "POST" {
-	// 	// Handle error or redirect as appropriate
-	// 	http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-	// 	return
-	// }
+func ResponsePage(c *EnvConfigs) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 
-	token := r.FormValue("token")
-	if !validtokens[token] {
-		http.Error(w, "Invalid token", http.StatusForbidden)
-		return
-	}
+		token := r.FormValue("token")
+		if !validtokens[token] {
+			http.Error(w, "Invalid token", http.StatusForbidden)
+			return
+		}
 
-	delete(validtokens, token)
-	templ, err := template.New("result").Parse(resultPage)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	token = generateToken()
-	validtokens[token] = true
-	// resp, err := internalclient.Get(viper.GetString("API_ENDPOINT"), nil)
-	resp, err := internalclient.Get(EnvConfigs.ApiEndpoint, nil)
-	if err != nil {
-		templ.Execute(w, map[string]string{
-			"Answer": err.Error(),
-			// "ApiEndpoint": viper.GetString("API_ENDPOINT"),
-			"ApiEndpoint": EnvConfigs.ApiEndpoint,
+		delete(validtokens, token)
+		templ, err := template.New("result").Parse(resultPage)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		token = generateToken()
+		validtokens[token] = true
+		resp, err := internalclient.Get(c.Api.Endpoint, nil)
+		if err != nil {
+			templ.Execute(w, map[string]string{
+				"Answer": err.Error(),
+				// "ApiEndpoint": c.ApiEndpoint,
+				"ApiEndpoint": c.Api.Endpoint,
+				"Token":       token,
+			})
+
+			return
+		}
+		var apiResponse APIResponse
+		err = json.Unmarshal([]byte(resp), &apiResponse)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		err = templ.Execute(w, map[string]string{
+			"Answer": apiResponse.Data,
+			// "ApiEndpoint": c.ApiEndpoint,
+			"ApiEndpoint": c.Api.Endpoint,
 			"Token":       token,
 		})
-
-		return
-	}
-	var apiResponse APIResponse
-	err = json.Unmarshal([]byte(resp), &apiResponse)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	err = templ.Execute(w, map[string]string{
-		"Answer": apiResponse.Data,
-		// "ApiEndpoint": viper.GetString("API_ENDPOINT"),
-		"ApiEndpoint": EnvConfigs.ApiEndpoint,
-		"Token":       token,
-	})
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	}
 }
 
-func configurationPage(w http.ResponseWriter, r *http.Request) {
-	templ, err := template.New("config").Parse(configPage)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	list := []string{}
-	for _, key := range viper.AllKeys() {
-		list = append(list, key+"="+viper.GetString(key))
+func ConfigurationPage(c *EnvConfigs) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if c.Logging == "Development" {
+			templ, err := template.New("config").Parse(configPage)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			list := []string{}
+			for _, key := range viper.AllKeys() {
+				list = append(list, key+"="+viper.GetString(key))
 
-	}
-	slices.Sort(list)
-	err = templ.Execute(w, list)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+			slices.Sort(list)
+			err = templ.Execute(w, list)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+			return
+		}
+		http.Error(w, "Not allowed", http.StatusForbidden)
 	}
 }
 
 func RunServer() {
-	// viper.AutomaticEnv() // Automatically read environment variables
 
-	// Set default value
-	// viper.SetDefault("API_ENDPOINT", "http://localhost:8091/rnd")
-	EnvConfigs = loadEnvVariables()
+	c := loadEnvVariables()
+
 	mux := http.NewServeMux()
-	ip := http.HandlerFunc(initialPage)
+	ip := http.HandlerFunc(InitialPage(c))
 	mux.Handle("GET /", ip)
-	rp := http.HandlerFunc(responsePage)
+	rp := http.HandlerFunc(ResponsePage(c))
 	mux.Handle("POST /", rp)
-	cp := http.HandlerFunc(configurationPage)
+	cp := http.HandlerFunc(ConfigurationPage(c))
 	mux.Handle("GET /config", cp)
 	// port := viper.GetString("PORT")
-	http.ListenAndServe(fmt.Sprintf(":%s", EnvConfigs.Port), mux)
+	http.ListenAndServe(fmt.Sprintf(":%s", c.Port), mux)
 }

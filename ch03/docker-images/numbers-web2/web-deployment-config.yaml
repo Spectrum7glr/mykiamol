@@ -17,7 +17,18 @@ spec:
     spec:
       containers:
         - name: web
-          image: gonumbersweb3
+          image: gonumbersweb4
           # imagePullPolicy is set to Never to indicate that
           # the image will not be pulled from a registry (local one)
           imagePullPolicy: Never
+          volumeMounts:
+            - name: config
+              mountPath: "/app/config"
+              readOnly: true
+          env:
+            - name: KIAMOL.SECTION
+              value: "04.01"
+      volumes:
+        - name: config
+          configMap:
+            name: go-numbers-config-json    

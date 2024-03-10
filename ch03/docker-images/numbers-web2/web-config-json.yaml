@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: go-numbers-config-json
+data:
+  default.json: |-
+    {
+      "KIAMOL": {
+          "CHAPTER": "chapter 04",
+          "SECTION": "ch04-4.1",
+          "EXERCISE": "try it perhaps tommorrow! (but also today)"
+      },
+      "PORT": 80,
+      "API": {
+          "ENDPOINT": "http://numbers-api/rnd"
+      },
+      "LOGGING": "Development"
+    }

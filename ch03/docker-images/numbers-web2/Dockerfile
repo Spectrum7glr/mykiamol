@@ -21,6 +21,7 @@ FROM gcr.io/distroless/base-debian11:debug  AS build-release-stage
 WORKDIR /app
 
 COPY --from=build-stage /app/numbersweb /app/numbersweb
+# COPY --from=build-stage /app/cmd/default.env /app/default.env
 
 EXPOSE 8080
 

@@ -1,0 +1,12 @@
+{
+    "KIAMOL": {
+        "CHAPTER": "ch04",
+        "SECTION": "ch04-4.1",
+        "EXERCISE": "try it perhaps tommorrow!"
+    },
+    "PORT": 80,
+    "API": {
+        "ENDPOINT": "http://numbers-api/rnd"
+    },
+    "LOGGING": "Development"
+}
