@@ -1,0 +1,6 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: adminer-configmap       # The name of the ConfigMap.
+data:                           # The data section contains the key-value pairs.
+  ADMINER_DESIGN: "mvt"
