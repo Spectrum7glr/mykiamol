@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pi-web
+  labels:
+    kiamol: ch07-lab
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: pi-web
+  template:
+    metadata:
+      labels:
+        app: pi-web
+    spec:
+      initContainers:
+        - name: create-startup-script
+          image: kiamol/ch03-sleep
+          command: ['sh', '-c', "echo -e '#!/bin/sh\ndotnet Pi.Web.dll -m web' > /scripts/startup.sh"]
+          volumeMounts:
+            - name: init
+              mountPath: /scripts
+        - name: make-startup-script-executable
+          image: kiamol/ch03-sleep
+          command: ['sh', '-c', 'chmod +x /scripts/startup.sh']
+          volumeMounts:
+            - name: init
+              mountPath: /scripts
+        - name: create-version-file
+          image: kiamol/ch03-sleep
+          command: ['sh', '-c', "echo -e 'ch07-lab pippuzzo' > /data/version.txt"]
+          volumeMounts:
+            - name: init
+              mountPath: /data
+      containers:
+        - image: kiamol/ch05-pi
+          command: ["/scripts/startup.sh"]
+          name: web
+          ports:
+            - containerPort: 80
+              name: http
+          volumeMounts:
+            - name: init
+              mountPath: /scripts
+              readOnly: true
+        - name: version
+          image: kiamol/ch03-sleep  
+          command: ['sh', '-c', 'while true; do echo -e "HTTP/1.1 200 OK\nContent-Type: text/plain\nContent-Length: 17\n\n$(cat /data-ro/version.txt)" | nc -l -p 8080; done']
+          ports:
+            - containerPort: 8080
+              name: http
+          volumeMounts:
+            - name: init
+              mountPath: /data-ro
+              readOnly: true
+      volumes:
+        - name: init
+          emptyDir: {}

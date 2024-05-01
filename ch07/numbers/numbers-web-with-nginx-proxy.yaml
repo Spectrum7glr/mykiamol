@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: numbers-web
+  labels:
+    kiamol: ch07
+spec:
+  selector:
+    matchLabels:
+      app: numbers-web
+  template:
+    metadata:
+      labels:
+        app: numbers-web
+        version: v2
+    spec:
+      containers:
+        - name: web
+          image: kiamol/ch03-numbers-web 
+          env:
+          - name: http_proxy
+            value: http://localhost:1080
+          - name: RngApi__Url
+            value: http://localhost/api
+        - name: proxy
+          image: nginx:1.17-alpine
+          volumeMounts:
+          - name: config-volume
+            mountPath: /etc/nginx/conf.d
+      volumes:
+      - name: config-volume
+        configMap:
+          name: nginx-proxy-config

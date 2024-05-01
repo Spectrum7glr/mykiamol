@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: todo-web-lab-config
+data:
+  config.json: |-
+    {
+      "ConnectionStrings": {
+        "ToDoDb": "Filename=/data/todo-list-lab.db"
+      }
+    }
