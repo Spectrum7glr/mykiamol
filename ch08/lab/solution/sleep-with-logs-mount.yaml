@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sleep
+  labels:
+    kiamol: ch08-lab
+spec:
+  selector:
+    matchLabels:
+      app: sleep
+  template:
+    metadata:
+      labels:
+        app: sleep
+    spec:
+      containers:
+        - name: sleep
+          image: kiamol/ch03-sleep
+          volumeMounts:
+            - name: log0
+              mountPath: "/log0"
+              readOnly: true
+            - name: log1
+              mountPath: "/log1"
+              readOnly: true
+            - name: log2
+              mountPath: "/log2"
+              readOnly: true
+      volumes:
+        - name: log0
+          persistentVolumeClaim:
+            claimName: logdata-nginx-ss-0
+        - name: log1
+          persistentVolumeClaim:
+            claimName: logdata-nginx-ss-1
+        - name: log2
+          persistentVolumeClaim:
+            claimName: logdata-nginx-ss-2

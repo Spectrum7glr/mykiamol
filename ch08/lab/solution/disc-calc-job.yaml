@@ -1,0 +1,34 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: nginx-logs-print-size
+  labels:
+    kiamol: ch08-lab
+spec:
+  template:
+    spec:
+      containers:
+        - name: disc-calc
+          image: kiamol/ch03-sleep
+          command: ['sh', '-c', 'du -h /log-nginx-0/access.log /log-nginx-1/access.log /log-nginx-2/access.log']
+          volumeMounts:
+            - name: log-nginx-0
+              mountPath: /log-nginx-0
+              readOnly: true
+            - name: log-nginx-1
+              mountPath: /log-nginx-1
+              readOnly: true
+            - name: log-nginx-2
+              mountPath: /log-nginx-2
+              readOnly: true
+      restartPolicy: Never
+      volumes:
+        - name: log-nginx-0
+          persistentVolumeClaim:
+            claimName: logdata-nginx-ss-0
+        - name: log-nginx-1
+          persistentVolumeClaim:
+            claimName: logdata-nginx-ss-1
+        - name: log-nginx-2
+          persistentVolumeClaim:
+            claimName: logdata-nginx-ss-2

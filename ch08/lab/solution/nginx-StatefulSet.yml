@@ -1,0 +1,48 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx
+  labels:
+    kiamol: ch08-lab
+spec:
+  selector:
+    app: nginx-ss
+  type: LoadBalancer
+  ports:
+    - port: 8088
+      targetPort: 80
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: nginx-ss
+  labels:
+    kiamol: ch08-lab
+spec:
+  selector:
+    matchLabels:
+      app: nginx-ss
+  serviceName: nginx
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: nginx-ss
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.17-alpine
+          volumeMounts:
+            - name: logdata
+              mountPath: /var/log/nginx/
+  volumeClaimTemplates:
+  - metadata:
+      name: logdata
+      labels:
+        kiamol: ch08-lab
+    spec:
+      accessModes: 
+       - ReadWriteOnce
+      resources:
+        requests:
+          storage: 50Mi
